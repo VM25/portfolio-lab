@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  /* Instrument ground: cool neutral, two surface layers, chroma for data only */
+  --color-bg-primary: #eef1f2;
+  --color-bg-secondary: #e4e9eb;
+  --color-bg-rail: #e8edee;
+  --color-panel: #fbfcfc;
+  --color-panel-elevated: #ffffff;
+  --color-panel-deep: #e4e9eb;
+  --color-border-strong: #a9b2b6;
+  --color-border-soft: #ccd4d7;
+  --color-divider: #bcc5c8;
+  --color-highlight: #e3ebef;
+
+  /* Ink */
+  --color-ink: #11161a;
+  --color-ink-secondary: #353d43;
+  --color-ink-muted: #5e676d;
+  --color-ink-faint: #87929a;
+  --color-ink-disabled: #b4bdc2;
+
+  /* Strategy identity (fixed across the whole interface) */
+  --color-strat-ew: #5b6571;
+  --color-strat-gmv: #2563a8;
+  --color-strat-ms: #7c3aed;
+  --color-strat-ra: #0f766e;
+  --color-strat-spy: #b45309;
+  --color-strat-6040: #475569;
+
+  /* Regime states (the identity palette) */
+  --color-regime-normal: #2f855a;
+  --color-regime-watch: #b7791f;
+  --color-regime-defensive: #b91c1c;
+
+  /* Risk semantics */
+  --color-risk-positive: #2f855a;
+  --color-risk-warning: #b7791f;
+  --color-risk-loss: #b91c1c;
+  --color-risk-neutral: #5b6571;
+  --color-risk-blue: #2563a8;
+
+  /* Body / normal text */
+  --font-sans: var(--font-geist), "Geist", ui-sans-serif, system-ui, sans-serif;
+  /* Major headings / display */
+  --font-display: var(--font-display), "Archivo", ui-sans-serif, system-ui, sans-serif;
+  /* Subheadings, section labels, supporting hierarchy */
+  --font-subhead: var(--font-subhead), "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Data, tickers, numeric tables, technical metadata */
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-ink-secondary);
+  font-feature-settings: "cv01", "ss03";
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: rgba(37, 99, 168, 0.2);
+  color: #11161a;
+}
+
+/* Thin scrollbars for dense tables/heatmaps */
+.thin-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: var(--color-panel-deep);
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 4px;
+}
+
+/* Module entry: a quiet rise, distinct from a blog fade. Enhances an already
+   visible default, so headless/no-JS renders ship the content. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .module-reveal {
+      animation: module-rise both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 18%;
+    }
+  }
+  @keyframes module-rise {
+    from {
+      opacity: 0.5;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
