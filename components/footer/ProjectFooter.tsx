@@ -41,6 +41,16 @@ export default function ProjectFooter() {
               <li>Vatsal Maniar</li>
               <li>Python research engine</li>
               <li>Next.js frontend</li>
+              <li>
+                <a
+                  href="https://github.com/VM25/portfolio-lab"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-border-strong underline-offset-2 transition-colors hover:text-strat-gmv"
+                >
+                  Source on GitHub
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -56,9 +66,19 @@ export default function ProjectFooter() {
         security, or trading strategy. Historical performance does not predict
         future results.
       </p>
-      <p className="mt-3 pb-10 text-[12px] font-semibold text-ink">
-        Portfolio Risk &amp; Allocation Analytics
-      </p>
+      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pb-10">
+        <p className="text-[12px] font-semibold text-ink">
+          Portfolio Risk &amp; Allocation Analytics
+        </p>
+        <a
+          href="https://github.com/VM25/portfolio-lab"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[11.5px] text-ink-muted underline decoration-border-strong underline-offset-2 transition-colors hover:text-strat-gmv"
+        >
+          github.com/VM25/portfolio-lab
+        </a>
+      </div>
     </footer>
   );
 }
