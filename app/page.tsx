@@ -8,6 +8,7 @@ import ResultsSection from "@/components/results/ResultsSection";
 import RiskDashboardSection from "@/components/risk/RiskDashboardSection";
 import RegimeAnalysisSection from "@/components/regimes/RegimeAnalysisSection";
 import CrisisSection from "@/components/crises/CrisisSection";
+import CorrelationBreakdownSection from "@/components/correlation/CorrelationBreakdownSection";
 import FactorExposureSection from "@/components/factors/FactorExposureSection";
 import StabilityDiagnosticsSection from "@/components/stability/StabilityDiagnosticsSection";
 import InvestorInterpretationSection from "@/components/interpretation/InvestorInterpretationSection";
@@ -26,6 +27,7 @@ export default function Page() {
       <RiskDashboardSection />
       <RegimeAnalysisSection />
       <CrisisSection />
+      <CorrelationBreakdownSection />
       <FactorExposureSection />
       <StabilityDiagnosticsSection />
       <InvestorInterpretationSection />

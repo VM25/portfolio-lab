@@ -302,6 +302,120 @@ note(f"[9] GFC status uniform per lookback across all 6 series: {gfc_status}; "
      "documented via gfc_partial_data warning.")
 
 # ---------------------------------------------------------------------------
+# 10. Correlation matrices: cells in [-1, 1], unit diagonal, symmetric
+# ---------------------------------------------------------------------------
+corr_matrix = load("correlation-matrix.json")
+corr_groups_by_key = defaultdict(dict)  # (lookback, view, crisisId) -> {(x,y): c}
+corr_off_bound = corr_bad_diag = 0
+for row in corr_matrix:
+    c = row["correlation"]
+    key = (row["lookback"], row["view"], row["crisisId"])
+    corr_groups_by_key[key][(row["assetX"], row["assetY"])] = c
+    if c is None or c < -1.0 - 1e-6 or c > 1.0 + 1e-6:
+        corr_off_bound += 1
+    if row["assetX"] == row["assetY"] and abs((c or 0.0) - 1.0) > 1e-6:
+        corr_bad_diag += 1
+corr_asym = 0
+for cells in corr_groups_by_key.values():
+    for (ax, ay), c in cells.items():
+        mirror = cells.get((ay, ax))
+        if mirror is None or abs((c or 0.0) - (mirror or 0.0)) > 1e-6:
+            corr_asym += 1
+if corr_off_bound:
+    fail(f"[10] {corr_off_bound} correlation cell(s) outside [-1, 1].")
+if corr_bad_diag:
+    fail(f"[10] {corr_bad_diag} correlation diagonal cell(s) != 1.")
+if corr_asym:
+    fail(f"[10] {corr_asym} asymmetric correlation pair(s).")
+if not corr_matrix:
+    fail("[10] correlation-matrix.json is empty.")
+note(f"[10] {len(corr_groups_by_key)} correlation matrices: all cells in "
+     f"[-1, 1], unit diagonal, symmetric ({len(corr_matrix)} cells).")
+
+# ---------------------------------------------------------------------------
+# 11. Effective bets in [1, group size]; effective bets != effective positions
+# ---------------------------------------------------------------------------
+GROUP_SIZES = {"Full universe": 13, "Growth / risk": 7,
+               "Duration / defensive": 3, "Inflation / real assets": 3}
+eff_bets = load("effective-bets.json")
+eff_violations = 0
+for row in eff_bets:
+    n = GROUP_SIZES.get(row["group"])
+    e = row["effectiveBets"]
+    if n is None or e is None or e < 1.0 - 1e-6 or e > n + 1e-6:
+        eff_violations += 1
+if eff_violations:
+    fail(f"[11] {eff_violations} effective-bets value(s) outside [1, group size].")
+if not eff_bets:
+    fail("[11] effective-bets.json is empty.")
+note(f"[11] effective bets in [1, n] for all {len(eff_bets)} records "
+     "(eigenstructure concentration, distinct from weight-based effective positions).")
+
+# ---------------------------------------------------------------------------
+# 12. PCA variance shares in [0, 1]; top-3 share in [PC1, 1]
+# ---------------------------------------------------------------------------
+pca = load("pca-concentration.json")
+pca_violations = 0
+for row in pca:
+    shares = [row["pc1Share"], row["pc2Share"], row["pc3Share"], row["top3Share"]]
+    if any(s is None or s < -1e-6 or s > 1.0 + 1e-6 for s in shares):
+        pca_violations += 1
+    elif row["top3Share"] + 1e-6 < row["pc1Share"]:
+        pca_violations += 1
+if pca_violations:
+    fail(f"[12] {pca_violations} PCA share constraint violation(s).")
+if not pca:
+    fail("[12] pca-concentration.json is empty.")
+note(f"[12] PCA shares in [0, 1] with top-3 >= PC1 for all {len(pca)} records.")
+
+# ---------------------------------------------------------------------------
+# 13. Hedge effectiveness: valid identifiers, VIX never an investable hedge,
+#     insufficient_data preserved (not interpolated)
+# ---------------------------------------------------------------------------
+hedge = load("hedge-effectiveness.json")
+HEDGE_OK = {"SHV", "TLT", "IEF", "TIP", "GLD", "DBC"}
+BASE_OK = {"Equal Weight", "60/40", "Regime-Aware Allocation"}
+CRISIS_OK = {"gfc_2008", "covid_2020", "2022_inflation"}
+LOOKBACK_OK = {"6M", "1Y", "3Y"}
+hedge_bad_id = hedge_vix = hedge_fab = 0
+for row in hedge:
+    if (row["crisisId"] not in CRISIS_OK or row["lookback"] not in LOOKBACK_OK
+            or row["basePortfolio"] not in BASE_OK or row["hedge"] not in HEDGE_OK):
+        hedge_bad_id += 1
+    if row["hedge"] in SIGNAL_ONLY:
+        hedge_vix += 1
+    if row.get("status") == "insufficient_data" and "drawdownReduction" in row:
+        hedge_fab += 1
+if hedge_bad_id:
+    fail(f"[13] {hedge_bad_id} hedge row(s) with invalid identifiers.")
+if hedge_vix:
+    fail(f"[13] {hedge_vix} hedge row(s) use a signal-only series (e.g. VIX).")
+if hedge_fab:
+    fail(f"[13] {hedge_fab} insufficient_data hedge row(s) carry fabricated metrics.")
+note(f"[13] {len(hedge)} hedge rows: valid identifiers, investable sleeves only "
+     "(no VIX), insufficient_data preserved.")
+
+# ---------------------------------------------------------------------------
+# 14. Crisis correlation dossiers honor the GFC coverage convention
+# ---------------------------------------------------------------------------
+dossiers = load("crisis-correlation-dossiers.json")
+dossier_status = {(d["crisisId"], d["lookback"]): d["status"] for d in dossiers}
+dossier_fab = sum(
+    1 for d in dossiers
+    if d["status"] == "insufficient_data" and d.get("averageCorrelation") is not None
+)
+if dossier_fab:
+    fail(f"[14] {dossier_fab} insufficient_data dossier(s) carry fabricated correlations.")
+if dossier_status.get(("gfc_2008", "6M")) != "valid":
+    fail("[14] GFC dossier at 6M expected 'valid'.")
+for lb in ("1Y", "3Y"):
+    if dossier_status.get(("gfc_2008", lb)) != "insufficient_data":
+        fail(f"[14] GFC dossier at {lb} expected 'insufficient_data', got "
+             f"{dossier_status.get(('gfc_2008', lb))}.")
+note(f"[14] crisis dossiers honor the 2008 coverage convention "
+     f"(GFC valid at 6M only); {len(dossiers)} dossiers, none interpolated.")
+
+# ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
 print("\nSANITY AUDIT RESULTS")
@@ -314,5 +428,5 @@ if failures:
         print(f"FAIL {f}")
     print(f"\n{len(failures)} failure(s). Fix before deployment.")
     sys.exit(1)
-print(f"PASS: all 9 checks passed across the generated data files "
+print(f"PASS: all 14 checks passed across the generated data files "
       f"(validation summary status: {validation['status']}).")

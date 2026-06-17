@@ -225,3 +225,85 @@ export type CompactSeries = {
   dates: string[];
   values: number[];
 };
+
+// ---------------------------------------------------------------------------
+// Correlation Breakdown & Crisis Hedge Lab
+// ---------------------------------------------------------------------------
+
+export type CrisisId = "gfc_2008" | "covid_2020" | "2022_inflation";
+
+export type CorrelationGroup =
+  | "Full universe"
+  | "Growth / risk"
+  | "Duration / defensive"
+  | "Inflation / real assets";
+
+/** Regime-averaged matrices ("normal"/"defensive") carry crisisId null; a
+ * crisis-window matrix carries view "crisis" and the relevant crisisId. */
+export type CorrelationView = "normal" | "defensive" | "crisis";
+
+export type CorrelationMatrixRecord = {
+  lookback: LookbackWindow;
+  view: CorrelationView;
+  crisisId: CrisisId | null;
+  assetX: string;
+  assetY: string;
+  correlation: number;
+};
+
+export type CorrelationSummaryRecord = {
+  lookback: LookbackWindow;
+  group: CorrelationGroup;
+  normalAverageCorrelation: number | null;
+  defensiveAverageCorrelation: number | null;
+  correlationUplift: number | null;
+};
+
+export type EffectiveBetsRecord = {
+  date: string;
+  lookback: LookbackWindow;
+  group: CorrelationGroup;
+  effectiveBets: number;
+};
+
+export type PcaConcentrationRecord = {
+  date: string;
+  lookback: LookbackWindow;
+  group: CorrelationGroup;
+  pc1Share: number;
+  pc2Share: number;
+  pc3Share: number;
+  top3Share: number;
+};
+
+export type CrisisCorrelationDossier = {
+  crisisId: CrisisId;
+  crisisName: string;
+  lookback: LookbackWindow;
+  status: "valid" | "insufficient_data";
+  averageCorrelation?: number | null;
+  growthRiskCorrelation?: number | null;
+  effectiveBets?: number | null;
+  pc1Share?: number | null;
+  bestHedge?: string | null;
+  worstHedge?: string | null;
+};
+
+export type HedgeEffectivenessRecord = {
+  crisisId: CrisisId;
+  crisisName: string;
+  basePortfolio: string;
+  hedge: string;
+  lookback: LookbackWindow;
+  status: "ok" | "insufficient_data";
+  hedgedReturn?: number;
+  unhedgedReturn?: number;
+  returnDelta?: number;
+  hedgedMaxDrawdown?: number;
+  unhedgedMaxDrawdown?: number;
+  drawdownReduction?: number;
+  hedgedCVaR95?: number;
+  unhedgedCVaR95?: number;
+  cvarReduction?: number;
+  hedgeDrag?: number;
+};

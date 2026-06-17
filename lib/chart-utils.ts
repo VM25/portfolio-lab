@@ -90,6 +90,60 @@ export function isBenchmark(name: string): boolean {
   return name === "SPY" || name === "60/40";
 }
 
+/** One muted color per estimation lookback, used where several lookbacks share
+ * a single figure (e.g. effective bets through time). */
+export const LOOKBACK_COLORS: Record<string, string> = {
+  "6M": "#0F766E",
+  "1Y": "#2563A8",
+  "3Y": "#7C3AED",
+};
+
+function lerpRgb(a: number[], b: number[], f: number): number[] {
+  return a.map((c, i) => Math.round(c + (b[i] - c) * f));
+}
+
+export function rgbCss(c: number[]): string {
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/** Multiply an rgb tuple toward black — used for isometric side faces. */
+export function shadeRgb(c: number[], factor: number): number[] {
+  return c.map((x) => Math.round(x * factor));
+}
+
+const CORR_GROUND = [233, 237, 237]; // cool neutral (zero correlation)
+const CORR_TEAL = [12, 84, 78]; // strong positive co-movement
+const CORR_BLUE = [37, 99, 168]; // strong negative (diversifying)
+const STRESS_AMBER = [183, 121, 31];
+const STRESS_RED = [153, 27, 27];
+
+/** Diverging correlation scale: blue (negative) → cool ground (0) → teal
+ * (positive), in the site's own palette. */
+export function correlationRgb(v: number): number[] {
+  const t = Math.max(-1, Math.min(1, v));
+  return lerpRgb(CORR_GROUND, t >= 0 ? CORR_TEAL : CORR_BLUE, Math.abs(t));
+}
+
+/** Stress/uplift scale: blue (correlation fell) → ground (0) → amber → deep
+ * red (correlation rose most under stress). The amber→red ramp is the site's
+ * regime-stress identity, not a generic trading red. */
+export function upliftRgb(v: number, max = 0.5): number[] {
+  const t = Math.max(-1, Math.min(1, v / max));
+  if (t < 0) return lerpRgb(CORR_GROUND, CORR_BLUE, Math.min(1, -t));
+  const f = Math.min(1, t);
+  return f <= 0.5
+    ? lerpRgb(CORR_GROUND, STRESS_AMBER, f / 0.5)
+    : lerpRgb(STRESS_AMBER, STRESS_RED, (f - 0.5) / 0.5);
+}
+
+export function correlationColor(v: number): string {
+  return rgbCss(correlationRgb(v));
+}
+
+export function upliftColor(v: number, max = 0.5): string {
+  return rgbCss(upliftRgb(v, max));
+}
+
 /** Allocation heatmap scale: cool ground -> deep teal ink. */
 export function heatmapColor(weight: number, maxWeight = 0.35): string {
   const t = Math.max(0, Math.min(1, weight / maxWeight));

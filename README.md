@@ -1,9 +1,10 @@
 # Portfolio Risk & Allocation Analytics
 
 An interactive research interface comparing four multi-asset allocation rules across
-rolling estimates, regime signals, factor exposure, drawdowns, transaction costs, and
-crisis windows. A Python research engine generates validated analytics; a Next.js
-interface presents them. Every number on the page is traceable to a generated data file.
+rolling estimates, regime signals, factor exposure, correlation breakdowns, drawdowns,
+transaction costs, hedge overlays, and crisis windows. A Python research engine generates
+validated analytics; a Next.js interface presents them. Every number on the page is
+traceable to a generated data file.
 
 **Repo:** https://github.com/VM25/portfolio-lab
 
@@ -29,8 +30,9 @@ lagged one month). Benchmarks are SPY and a monthly-rebalanced 60/40 (SPY/IEF).
 
 Evaluation spans cumulative wealth, drawdowns, VaR/CVaR, Sortino, skew/kurtosis,
 turnover, concentration, cumulative cost drag, Fama-French 5-factor exposure
-diagnostics, and three dedicated crisis windows (2008-09 GFC, 2020 COVID shock,
-2022 inflation / rate-hike drawdown).
+diagnostics, regime-conditioned correlation matrices, effective independent bets,
+PCA risk concentration, crisis hedge-effectiveness tests, and three dedicated crisis
+windows (2008-09 GFC, 2020 COVID shock, 2022 inflation / rate-hike drawdown).
 
 ## The interface
 
@@ -55,6 +57,14 @@ time axis: signal changed, regime changed, weights changed.
 
 ![Signal classification and allocation response](screenshots/04-regimes.jpg)
 
+**Correlation Breakdown & Crisis Hedge Lab** — normal-vs-stress correlation matrices,
+effective independent bets, PCA risk concentration, and hedge overlay tests reveal whether
+diversification survives when markets move together. A data-bound isometric correlation
+field opens the module; an exact 2D heatmap, time-series charts, a per-crisis dossier, and
+a hedge table carry the precise values.
+
+![Correlation Breakdown & Crisis Hedge Lab: isometric stress-correlation field and the headline diagnostics](screenshots/06-correlation.jpg)
+
 **Implementation diagnostics** — an allocation-weight heatmap through time, monthly
 turnover, and concentration, answering whether a backtest-attractive rule is actually
 runnable.
@@ -72,13 +82,19 @@ runnable.
 
 ```
 research/    Python research engine: data loading, signals, estimators, optimizers,
-             strategies, backtest, metrics, crisis, factors, diagnostics, validation,
+             strategies, backtest, metrics, crisis, factors, diagnostics, and
+             correlation (correlation matrices, effective bets, PCA concentration,
+             crisis correlation dossiers, hedge-effectiveness tests), plus validation
              and export. generate_outputs.py runs the whole pipeline.
-data/        Generated frontend-ready JSON (+ raw/processed caches for reproducibility).
+data/        Generated frontend-ready JSON (+ raw/processed caches for reproducibility),
+             including correlation-matrix.json, correlation-summary.json,
+             effective-bets.json, pca-concentration.json, crisis-correlation-dossiers.json,
+             and hedge-effectiveness.json.
 app/         Next.js App Router entry, layout, and global theme tokens.
-components/  Research-interface modules (server components + client chart islands).
+components/  Research-interface modules (server components + client chart islands),
+             including correlation/ for the new diagnostics section.
 lib/         Typed data loaders, formatters, chart utilities, the research-flow map.
-scripts/     sanity_audit.py: nine deployment checks over the generated data files.
+scripts/     sanity_audit.py: fourteen deployment checks over the generated data files.
 screenshots/ Interface screenshots used in this README.
 ```
 
@@ -95,7 +111,8 @@ python generate_outputs.py            # raw downloads are cached; --force-downlo
 ```
 
 The run ends with a validation summary (weight sums, bounds, no-look-ahead, VaR/CVaR
-conventions, CPI lag, benchmark construction, export completeness) written to
+conventions, CPI lag, benchmark construction, correlation bounds and symmetry, effective-
+bets bounds, PCA shares, hedge integrity, and export completeness) written to
 `data/validation-summary.json`.
 
 **Interface:**
@@ -116,7 +133,11 @@ It checks weights sum to 1 and respect the 35% cap, signal series are never held
 the CPI signal is lagged with no look-ahead, turnover excludes the initial buy-in,
 cumulative cost drag equals the terminal net/gross wealth ratio, VaR/CVaR are positive
 loss magnitudes while drawdowns are negative, SPY carries zero cost drag, and the 2008
-insufficient-data logic is consistent across lookbacks, strategies, and benchmarks.
+insufficient-data logic is consistent across lookbacks, strategies, and benchmarks. It
+also verifies the correlation diagnostics: every correlation cell is in [-1, 1] with a
+unit, symmetric diagonal; effective bets stay within [1, group size]; PCA variance shares
+are in [0, 1]; and hedge rows use only investable sleeves (never VIX), with crisis
+insufficient-data rows preserved rather than interpolated.
 
 ## Data sources
 
@@ -158,6 +179,18 @@ insufficient-data logic is consistent across lookbacks, strategies, and benchmar
 - **VaR/CVaR sign convention.** Daily historical loss estimates at the 95% confidence
   level, reported as positive loss magnitudes (CVaR >= VaR by construction, enforced by
   validation). Drawdowns are reported as negative values.
+- **Correlation diagnostics.** Rolling correlation matrices are computed from aligned
+  daily ETF returns over the same 6M / 1Y / 3Y windows used by the allocation rules.
+  Effective bets are derived from correlation-matrix eigenvalues, not portfolio weights.
+  PCA concentration is reported as the share of variance explained by the largest
+  components. Normal- and defensive-regime matrices average the rolling matrices over
+  rebalance dates carrying each regime label.
+- **Hedge overlay tests.** Hedge sleeves are evaluated as simple 90/10 crisis-window
+  overlays against selected base portfolios, rebalanced monthly and charged the same
+  5 bps turnover cost. The reported full-sample impact is the overlay's effect on
+  full-period annualized return — positive when the sleeve adds return over the whole
+  sample, negative when it costs return. VIX remains signal-only and is not treated as
+  an investable hedge.
 - **Factor model limitation.** The Fama-French 5-factor regression is an equity-factor
   exposure diagnostic. It does not fully explain multi-asset strategies holding bonds,
   TIPS, gold, commodities, credit, REITs, and cash; a fuller attribution would add term,
@@ -175,7 +208,10 @@ Historical performance does not predict future returns. ETF proxies are imperfec
 expected-return and covariance estimates are noisy; the cost model is a simplified linear
 approximation; taxes, spreads, and market impact are ignored; regime thresholds are
 judgment calls; factor regressions diagnose exposures and are not proof of alpha; crisis
-windows are manually selected.
+windows are manually selected. Correlation estimates are sample-sensitive; PCA components
+are statistical summaries, not named economic factors; hedge results are historical and
+crisis-specific; and the simple hedge overlays do not model taxes, spreads, market impact,
+or options-based convex hedges.
 
 ## Disclaimer
 

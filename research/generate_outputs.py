@@ -29,6 +29,7 @@ import drawdowns as drawdowns_mod
 import crisis as crisis_mod
 import factors as factors_mod
 import diagnostics as diagnostics_mod
+import correlation as correlation_mod
 import validation as validation_mod
 import static_content
 from export import export_json, export_csv, round_records
@@ -46,6 +47,12 @@ REQUIRED_EXPORTS = [
     "drawdowns.json",
     "turnover-diagnostics.json",
     "concentration-diagnostics.json",
+    "correlation-matrix.json",
+    "correlation-summary.json",
+    "effective-bets.json",
+    "pca-concentration.json",
+    "crisis-correlation-dossiers.json",
+    "hedge-effectiveness.json",
     "market-context.json",
     "validation-summary.json",
     "backtest-config.json",
@@ -207,6 +214,19 @@ def main():
     concentration_diag = diagnostics_mod.generate_concentration_diagnostics(results)
     print("Computed turnover and concentration diagnostics.")
 
+    correlation_matrix = correlation_mod.generate_correlation_matrix_records(
+        returns, signal_frame, results
+    )
+    correlation_summary = correlation_mod.generate_correlation_summary(returns, signal_frame)
+    effective_bets = correlation_mod.generate_effective_bets(returns)
+    pca_concentration = correlation_mod.generate_pca_concentration(returns)
+    hedge_effectiveness = correlation_mod.generate_hedge_effectiveness(results, returns)
+    crisis_correlation = correlation_mod.generate_crisis_correlation_dossiers(
+        returns, results, hedge_effectiveness
+    )
+    print("Computed correlation breakdown, effective bets, PCA concentration, "
+          "and hedge-effectiveness analytics.")
+
     # --------------------------------------------------------------- exports
     written = []
     written.append(export_json(static_content.asset_universe(), config.DATA_DIR / "asset-universe.json"))
@@ -224,6 +244,12 @@ def main():
     written.append(export_json(export_drawdowns(results, dd_frames), config.DATA_DIR / "drawdowns.json"))
     written.append(export_json(turnover_diag, config.DATA_DIR / "turnover-diagnostics.json"))
     written.append(export_json(concentration_diag, config.DATA_DIR / "concentration-diagnostics.json"))
+    written.append(export_json(correlation_matrix, config.DATA_DIR / "correlation-matrix.json"))
+    written.append(export_json(correlation_summary, config.DATA_DIR / "correlation-summary.json"))
+    written.append(export_json(effective_bets, config.DATA_DIR / "effective-bets.json"))
+    written.append(export_json(pca_concentration, config.DATA_DIR / "pca-concentration.json"))
+    written.append(export_json(crisis_correlation, config.DATA_DIR / "crisis-correlation-dossiers.json"))
+    written.append(export_json(hedge_effectiveness, config.DATA_DIR / "hedge-effectiveness.json"))
 
     # ------------------------------------------------------------ validation
     cpi_yoy = signals_mod.compute_cpi_yoy(cpi)
@@ -240,6 +266,18 @@ def main():
         validation_mod.validate_regime_signals(signal_frame),
         validation_mod.validate_cpi_lag(cpi_yoy, cpi_yoy_lagged),
         validation_mod.validate_benchmarks(results, returns),
+        validation_mod.validate_correlation_matrix_bounds(correlation_matrix),
+        validation_mod.validate_correlation_matrix_symmetry(correlation_matrix),
+        validation_mod.validate_effective_bets(
+            effective_bets, correlation_mod.CORRELATION_GROUPS
+        ),
+        validation_mod.validate_pca_shares(pca_concentration),
+        validation_mod.validate_hedge_effectiveness(
+            hedge_effectiveness,
+            crisis_ids=set(correlation_mod.CRISIS_IDS.values()),
+            base_portfolios=set(correlation_mod.HEDGE_BASE_PORTFOLIOS),
+            hedges=set(correlation_mod.HEDGE_SLEEVES),
+        ),
         validation_mod.validate_exports(written + ["validation-summary.json"], REQUIRED_EXPORTS),
     ]
 

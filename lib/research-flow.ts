@@ -23,10 +23,11 @@ export const RESEARCH_FLOW: ResearchModule[] = [
   { id: "risk", num: "06", label: "Drawdown & tail risk", phase: "Evidence" },
   { id: "regimes", num: "07", label: "Regime response", phase: "Evidence" },
   { id: "stress", num: "08", label: "Stress windows", phase: "Evidence" },
-  { id: "factors", num: "09", label: "Factor attribution", phase: "Diagnostics" },
-  { id: "implementation", num: "10", label: "Implementation", phase: "Diagnostics" },
-  { id: "interpretation", num: "11", label: "Interpretation", phase: "Boundaries" },
-  { id: "limits", num: "12", label: "Boundary conditions", phase: "Boundaries" },
+  { id: "correlation", num: "09", label: "Correlation breakdown", phase: "Diagnostics" },
+  { id: "factors", num: "10", label: "Factor attribution", phase: "Diagnostics" },
+  { id: "implementation", num: "11", label: "Implementation", phase: "Diagnostics" },
+  { id: "interpretation", num: "12", label: "Interpretation", phase: "Boundaries" },
+  { id: "limits", num: "13", label: "Boundary conditions", phase: "Boundaries" },
 ];
 
 export const PHASE_ORDER: ModulePhase[] = [

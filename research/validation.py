@@ -215,6 +215,131 @@ def validate_exports(written_files, required_files):
     )
 
 
+def validate_correlation_matrix_bounds(correlation_records):
+    """Every correlation in [-1, 1], and the diagonal (assetX == assetY) is 1."""
+    ok = True
+    off_bound = 0
+    bad_diagonal = 0
+    for r in correlation_records:
+        c = r["correlation"]
+        if c is None or not np.isfinite(c) or c < -1.0 - 1e-6 or c > 1.0 + 1e-6:
+            off_bound += 1
+            ok = False
+        if r["assetX"] == r["assetY"] and abs((c or 0.0) - 1.0) > 1e-6:
+            bad_diagonal += 1
+            ok = False
+    return _check(
+        "correlation_matrix_bounds",
+        ok,
+        f"All {len(correlation_records)} correlation cells are within [-1, 1] "
+        "and every diagonal entry equals 1."
+        if ok else f"{off_bound} out-of-range and {bad_diagonal} non-unit "
+        "diagonal correlation cells.",
+    )
+
+
+def validate_correlation_matrix_symmetry(correlation_records):
+    """corr(i, j) == corr(j, i) within tolerance for every matrix
+    (keyed by lookback, view, crisis)."""
+    grouped = {}
+    for r in correlation_records:
+        key = (r["lookback"], r["view"], r["crisisId"])
+        grouped.setdefault(key, {})[(r["assetX"], r["assetY"])] = r["correlation"]
+    ok = True
+    asymmetric = 0
+    for cells in grouped.values():
+        for (ax, ay), c in cells.items():
+            mirror = cells.get((ay, ax))
+            if mirror is None or abs((c or 0.0) - (mirror or 0.0)) > 1e-6:
+                asymmetric += 1
+                ok = False
+    return _check(
+        "correlation_matrix_symmetry",
+        ok,
+        f"All {len(grouped)} correlation matrices are symmetric within tolerance."
+        if ok else f"{asymmetric} asymmetric correlation pair(s) found.",
+    )
+
+
+def validate_effective_bets(effective_bets_records, groups):
+    """Effective bets are in [1, group size] for every record."""
+    sizes = {name: len(tickers) for name, tickers in groups.items()}
+    ok = True
+    violations = 0
+    for r in effective_bets_records:
+        n = sizes.get(r["group"])
+        eff = r["effectiveBets"]
+        if n is None or eff is None or eff < 1.0 - 1e-6 or eff > n + 1e-6:
+            violations += 1
+            ok = False
+    return _check(
+        "effective_bets_bounds",
+        ok,
+        f"Effective bets lie in [1, group size] for all "
+        f"{len(effective_bets_records)} records."
+        if ok else f"{violations} effective-bets value(s) outside [1, n].",
+    )
+
+
+def validate_pca_shares(pca_records):
+    """Each PCA variance share is in [0, 1] and the top-3 share does not
+    exceed 1."""
+    ok = True
+    violations = 0
+    for r in pca_records:
+        shares = [r["pc1Share"], r["pc2Share"], r["pc3Share"], r["top3Share"]]
+        if any(s is None or s < -1e-6 or s > 1.0 + 1e-6 for s in shares):
+            violations += 1
+            ok = False
+        if r["top3Share"] is not None and (
+            r["top3Share"] + 1e-6 < r["pc1Share"]
+        ):
+            violations += 1
+            ok = False
+    return _check(
+        "pca_share_bounds",
+        ok,
+        f"All PCA variance shares are in [0, 1] with top-3 >= PC1 for "
+        f"{len(pca_records)} records."
+        if ok else f"{violations} PCA share constraint violation(s).",
+    )
+
+
+def validate_hedge_effectiveness(hedge_records, crisis_ids, base_portfolios, hedges):
+    """Hedge rows carry valid crisis IDs, lookbacks, base portfolios, and hedge
+    tickers; VIX is never an investable hedge; insufficient_data rows carry no
+    fabricated metrics."""
+    lookbacks = set(config.LOOKBACK_WINDOWS)
+    signal_only = {"VIX", "^VIX"}
+    ok = True
+    bad_identity = 0
+    vix_used = 0
+    fabricated = 0
+    for r in hedge_records:
+        if (
+            r["crisisId"] not in crisis_ids
+            or r["lookback"] not in lookbacks
+            or r["basePortfolio"] not in base_portfolios
+            or r["hedge"] not in hedges
+        ):
+            bad_identity += 1
+            ok = False
+        if r["hedge"] in signal_only:
+            vix_used += 1
+            ok = False
+        if r.get("status") == "insufficient_data" and "drawdownReduction" in r:
+            fabricated += 1
+            ok = False
+    return _check(
+        "hedge_effectiveness_integrity",
+        ok,
+        f"All {len(hedge_records)} hedge rows have valid identifiers, use only "
+        "investable hedge sleeves (no VIX), and preserve insufficient_data."
+        if ok else f"{bad_identity} invalid identifier row(s), {vix_used} VIX "
+        f"hedge row(s), {fabricated} fabricated insufficient_data row(s).",
+    )
+
+
 def generate_validation_summary(checks, warnings):
     status = "pass"
     if any(c["status"] == "fail" for c in checks):
