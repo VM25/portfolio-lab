@@ -30,6 +30,7 @@ import crisis as crisis_mod
 import factors as factors_mod
 import diagnostics as diagnostics_mod
 import correlation as correlation_mod
+import coverage as coverage_mod
 import validation as validation_mod
 import static_content
 from export import export_json, export_csv, round_records
@@ -54,6 +55,7 @@ REQUIRED_EXPORTS = [
     "crisis-correlation-dossiers.json",
     "hedge-effectiveness.json",
     "market-context.json",
+    "data-coverage.json",
     "validation-summary.json",
     "backtest-config.json",
 ]
@@ -160,6 +162,11 @@ def main():
     print(f"Generated daily return matrix: {returns.index[0].date()} to "
           f"{returns.index[-1].date()} ({len(returns)} days).")
 
+    data_coverage = coverage_mod.data_coverage(prices, vix, cpi, ff, returns)
+    print("Source coverage: " + ", ".join(
+        f"{s['label']} through {s['throughLabel']}" for s in data_coverage["sources"]
+    ) + ".")
+
     # --------------------------------------------------------------- signals
     signal_frame = signals_mod.generate_regime_signals(returns, cpi, vix)
     export_csv(signal_frame, config.PROCESSED_DIR / "signal_data.csv")
@@ -234,6 +241,7 @@ def main():
     written.append(export_json(static_content.strategy_summary(), config.DATA_DIR / "strategy-summary.json"))
     written.append(export_json(static_content.backtest_config(), config.DATA_DIR / "backtest-config.json"))
     written.append(export_json(static_content.market_context(), config.DATA_DIR / "market-context.json"))
+    written.append(export_json(data_coverage, config.DATA_DIR / "data-coverage.json"))
     written.append(export_json(export_strategy_returns(results), config.DATA_DIR / "strategy-returns.json"))
     written.append(export_json(export_portfolio_weights(results), config.DATA_DIR / "portfolio-weights.json"))
     written.append(export_json(performance, config.DATA_DIR / "performance-metrics.json"))
@@ -266,6 +274,7 @@ def main():
         validation_mod.validate_regime_signals(signal_frame),
         validation_mod.validate_cpi_lag(cpi_yoy, cpi_yoy_lagged),
         validation_mod.validate_benchmarks(results, returns),
+        validation_mod.validate_data_coverage(data_coverage, prices, vix, cpi, ff, returns),
         validation_mod.validate_correlation_matrix_bounds(correlation_matrix),
         validation_mod.validate_correlation_matrix_symmetry(correlation_matrix),
         validation_mod.validate_effective_bets(

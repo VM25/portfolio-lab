@@ -32,7 +32,7 @@ export default function ResultsSection() {
       <div className="mt-8 max-w-[640px]">
         <ResearchNote
           finding="No rule dominates on every dimension, and the most aggressive one is the most expensive to run."
-          evidence="SPY leads on raw return with the deepest drawdown of the sample; GMV cuts volatility to roughly a third of SPY's at the cost of most of the upside. Max Sharpe's turnover runs materially above the baselines, producing the largest cumulative cost drag at every lookback."
+          evidence="SPY leads on raw return with the deepest drawdown of the sample; GMV cuts volatility to under a fifth of SPY's at the cost of most of the upside. Max Sharpe's turnover runs materially above the baselines, producing the largest cumulative cost drag at every lookback."
           interpretation="Allocation choice trades return against drawdown, tail risk, and implementability; estimated-return noise converts directly into trading costs."
           limitation="Rankings shift with the lookback window and sample period, and the 5 bps linear cost model is a simplification."
         />

@@ -4,7 +4,7 @@ import Section from "@/components/layout/Section";
 import SectionHeader from "@/components/layout/SectionHeader";
 import { assetUniverse } from "@/lib/data/asset-universe";
 import { getWeightGrid } from "@/lib/data/diagnostics";
-import { regimeSignals } from "@/lib/data/regimes";
+import { getLatestSignal, regimeSignals } from "@/lib/data/regimes";
 import SignalStackCharts, { type StackRow } from "./SignalStackCharts";
 
 function buildStackRows(): StackRow[] {
@@ -58,6 +58,23 @@ function buildStackRows(): StackRow[] {
   return rows;
 }
 
+/** Where the classification record currently stands, phrased from the latest
+ * generated signal point rather than a hardcoded description, so the sentence
+ * stays true after every data refresh. */
+function latestRegimeSentence(): string {
+  const latest = getLatestSignal();
+  const active = [
+    latest.corrStress ? "stock-bond correlation" : null,
+    latest.inflationStress ? "inflation" : null,
+    latest.vixStress ? "volatility" : null,
+  ].filter(Boolean) as string[];
+  const stress =
+    active.length === 0
+      ? "no stress signals active"
+      : `${active.join(" and ")} stress active`;
+  return `The record ends ${latest.date} in the ${latest.regimeLabel} regime, with ${stress}.`;
+}
+
 export default function RegimeAnalysisSection() {
   const rows = buildStackRows();
 
@@ -80,7 +97,7 @@ export default function RegimeAnalysisSection() {
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <ResearchNote
           finding="The three signals rarely agree, which is the point."
-          evidence="Correlation stress appeared in several pre-2020 episodes without sustained inflation stress, while 2021-2023 combined inflation pressure with more frequent correlation and volatility stress."
+          evidence={`Correlation stress appeared in several pre-2020 episodes without sustained inflation stress, while 2021-2023 combined inflation pressure with more frequent correlation and volatility stress. ${latestRegimeSentence()}`}
           interpretation="A single-indicator rule would whipsaw; requiring multiple simultaneous signals makes the defensive shift more selective."
           limitation="Thresholds (+0.20 correlation, 3% CPI, VIX 25) are judgment calls; different values would shift regime boundaries."
         />

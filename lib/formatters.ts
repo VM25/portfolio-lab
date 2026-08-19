@@ -52,6 +52,22 @@ export function formatLoss(value: number | null | undefined, decimals = 2): stri
   return `${(value * 100).toFixed(decimals)}%`;
 }
 
+const NUMBER_WORDS = [
+  "zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+  "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+  "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "twenty-one",
+  "twenty-two", "twenty-three", "twenty-four", "twenty-five", "twenty-six",
+  "twenty-seven", "twenty-eight", "twenty-nine", "thirty", "thirty-one",
+  "thirty-two", "thirty-three", "thirty-four", "thirty-five", "thirty-six",
+  "thirty-seven", "thirty-eight", "thirty-nine", "forty",
+];
+
+/** Spell a small whole number for prose that grows with the dataset (the
+ * sample span), so the wording tracks the data instead of going stale. */
+export function spellNumber(value: number): string {
+  return NUMBER_WORDS[value] ?? String(value);
+}
+
 export function formatWealth(value: number | null | undefined): string {
   if (value == null || !isFinite(value)) return "—";
   return `$${value.toFixed(0)}`;

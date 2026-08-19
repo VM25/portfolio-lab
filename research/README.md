@@ -38,7 +38,7 @@ as `insufficient_data`.
 | Module | Responsibility |
 | --- | --- |
 | `config.py` | Universe, thresholds, dates, constraints — single source of truth |
-| `data_loader.py` | Load/download prices, VIX, CPI, Fama-French factors (cached in `../data/raw/`) |
+| `data_loader.py` | Load/download prices, VIX, CPI, Fama-French factors (cached in `../data/raw/`); retries transient failures, rejects partial or regressed downloads, writes the cache atomically |
 | `preprocessing.py` | Price cleaning, simple returns, common-history alignment |
 | `signals.py` | SPY-TLT rolling correlation, lagged CPI YoY, VIX stress, regime labels |
 | `estimators.py` | Expected returns, ridge-stabilized covariance, realized vol, risk-free |
@@ -50,6 +50,7 @@ as `insufficient_data`.
 | `crisis.py` | Crisis-window slicing, metrics, and rebased wealth paths |
 | `factors.py` | Fama-French 5-factor OLS exposure diagnostics |
 | `diagnostics.py` | Turnover, HHI concentration, effective positions, cumulative cost drag |
+| `coverage.py` | Per-source freshness boundaries exported as `data-coverage.json` |
 | `validation.py` | The automated integrity checks |
 | `static_content.py` | Hand-authored descriptive exports (universe, factsheets, sourced market context) |
 | `export.py` | JSON/CSV writers with NaN-safe sanitization |
@@ -79,7 +80,9 @@ Data completeness · return integrity · weight sums and bounds · no look-ahead
 transaction-cost application · turnover validity · VaR/CVaR sign convention and
 CVaR ≥ VaR · factor regression fit ranges · regime signal availability · CPI lag
 verification · benchmark construction (SPY series replication, 60/40 weights) ·
-export completeness. Results land in `../data/validation-summary.json` and are
+correlation bounds and symmetry · effective-bets bounds · PCA share bounds ·
+hedge-effectiveness integrity · data-coverage honesty (every published freshness
+date matches its source's last observation) · export completeness. Results land in `../data/validation-summary.json` and are
 surfaced on the site.
 
 ## Known limitations

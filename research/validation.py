@@ -205,6 +205,39 @@ def validate_benchmarks(results, returns):
     )
 
 
+def validate_data_coverage(coverage, prices, vix, cpi, ff, returns):
+    """Every published coverage date must be a real observation date in the
+    source it claims to describe, and the headline market-data boundary must
+    equal the last day the backtest actually trades. This is what stops the
+    site from advertising a freshness the data does not have."""
+    actual = {
+        "etf-prices": pd.Timestamp(prices.dropna(how="all").index.max()),
+        "vix": pd.Timestamp(vix.dropna().index.max()),
+        "cpi": pd.Timestamp(cpi.dropna().index.max()),
+        "fama-french": pd.Timestamp(ff.dropna(how="all").index.max()),
+    }
+    mismatched = []
+    for source in coverage["sources"]:
+        expected = actual.get(source["id"])
+        if expected is None or source["through"] != expected.strftime("%Y-%m-%d"):
+            mismatched.append(source["id"])
+    backtest_end = pd.Timestamp(returns.index.max()).strftime("%Y-%m-%d")
+    headline_ok = (
+        coverage["marketDataThrough"] == actual["etf-prices"].strftime("%Y-%m-%d")
+        and coverage["backtestEnd"] == backtest_end
+    )
+    ok = not mismatched and headline_ok
+    return _check(
+        "data_coverage_honesty",
+        ok,
+        "Published coverage dates match each source's last observation "
+        f"(prices {actual['etf-prices'].date()}, VIX {actual['vix'].date()}, "
+        f"CPI {actual['cpi'].date()}, factors {actual['fama-french'].date()}); "
+        "the headline boundary equals the last backtested day."
+        if ok else f"Coverage mismatch for: {mismatched or 'headline boundary'}.",
+    )
+
+
 def validate_exports(written_files, required_files):
     missing = [f for f in required_files if f not in written_files]
     return _check(

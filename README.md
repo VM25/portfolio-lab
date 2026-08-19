@@ -89,12 +89,14 @@ research/    Python research engine: data loading, signals, estimators, optimize
 data/        Generated frontend-ready JSON (+ raw/processed caches for reproducibility),
              including correlation-matrix.json, correlation-summary.json,
              effective-bets.json, pca-concentration.json, crisis-correlation-dossiers.json,
-             and hedge-effectiveness.json.
+             hedge-effectiveness.json, and data-coverage.json (per-source freshness
+             boundaries).
 app/         Next.js App Router entry, layout, and global theme tokens.
 components/  Research-interface modules (server components + client chart islands),
              including correlation/ for the new diagnostics section.
 lib/         Typed data loaders, formatters, chart utilities, the research-flow map.
 scripts/     sanity_audit.py: fourteen deployment checks over the generated data files.
+.github/     workflows/weekly-data-refresh.yml: the scheduled Wednesday refresh.
 screenshots/ Interface screenshots used in this README.
 ```
 
@@ -112,8 +114,8 @@ python generate_outputs.py            # raw downloads are cached; --force-downlo
 
 The run ends with a validation summary (weight sums, bounds, no-look-ahead, VaR/CVaR
 conventions, CPI lag, benchmark construction, correlation bounds and symmetry, effective-
-bets bounds, PCA shares, hedge integrity, and export completeness) written to
-`data/validation-summary.json`.
+bets bounds, PCA shares, hedge integrity, published data-coverage dates, and export
+completeness) written to `data/validation-summary.json`.
 
 **Interface:**
 
@@ -138,6 +140,34 @@ also verifies the correlation diagnostics: every correlation cell is in [-1, 1] 
 unit, symmetric diagonal; effective bets stay within [1, group size]; PCA variance shares
 are in [0, 1]; and hedge rows use only investable sleeves (never VIX), with crisis
 insufficient-data rows preserved rather than interpolated.
+
+## Data refresh
+
+Upstream data is refreshed by a scheduled GitHub Actions workflow
+(`.github/workflows/weekly-data-refresh.yml`), which also supports manual
+`workflow_dispatch` runs.
+
+```
+Wednesday 06:47 UTC
+  -> python research/generate_outputs.py --force-download   (fresh upstream fetch)
+  -> python scripts/sanity_audit.py                         (numerical audit)
+  -> npm ci && npm run build                                (production build check)
+  -> commit + push to main only if generated outputs actually changed
+  -> Netlify's existing Git integration rebuilds and redeploys
+```
+
+The workflow always uses `--force-download`, so a scheduled run cannot republish the
+committed cache as current. Every stage is a gate: a failed download, a failed
+pipeline, a failed validation or audit, or a failed production build stops the run
+before anything is committed, leaving the previous known-good version in place. A run
+that finds no new data produces no commit — the wall-clock stamp in
+`validation-summary.json` is explicitly ignored so timestamp-only churn never becomes
+a commit.
+
+Because the four sources publish on different calendars, freshness is reported per
+source rather than as a single claim. `data/data-coverage.json` records each source's
+last observation, and the interface displays those boundaries directly: the headline
+market-data date in the opening frame, and one date per source in the colophon.
 
 ## Data sources
 
